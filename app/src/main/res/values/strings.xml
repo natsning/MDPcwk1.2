@@ -3,4 +3,6 @@
     <string name="cd_search">Search music files</string>
     <string name="cd_play">Play/Pause</string>
     <string name="cd_music">Display Image</string>
+    <string name="heading_start">No songs playing..</string>
+    <string name="duration_start">0:00</string>
 </resources>
