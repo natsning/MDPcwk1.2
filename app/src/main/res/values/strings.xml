@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">MP3Player_hfyst1</string>
+    <string name="cd_search">Search music files</string>
+    <string name="cd_play">Play/Pause</string>
+    <string name="cd_music">Display Image</string>
+</resources>
