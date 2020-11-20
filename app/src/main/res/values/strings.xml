@@ -5,4 +5,5 @@
     <string name="cd_music">Display Image</string>
     <string name="heading_start">No songs playing..</string>
     <string name="duration_start">0:00</string>
+    <string name="no_music_found">No Music Found</string>
 </resources>

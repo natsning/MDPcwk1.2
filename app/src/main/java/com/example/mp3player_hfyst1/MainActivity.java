@@ -6,17 +6,14 @@ import androidx.core.app.ActivityCompat;
 import android.Manifest;
 import android.app.ActivityManager;
 import android.content.pm.PackageManager;
-import android.net.Uri;
 import android.os.Bundle;
-import android.os.Environment;
+import android.provider.MediaStore;
 import android.util.Log;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ImageButton;
 import android.widget.ListView;
-import android.database.Cursor;
-import android.provider.MediaStore;
-import android.widget.AdapterView;
 import android.widget.SimpleCursorAdapter;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -73,44 +70,39 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void onSearchClicked(View v){
-        final ListView lv = findViewById(R.id.listView);
+        final ListView lv = findViewById(R.id.listSong);
         lv.setVisibility(View.VISIBLE);
 
-        String path = "/sdcard/Music/";
-        String[] files = new File(path).list();
-        if(files.length>0)
-            Log.d(TAG,files[0]);
-//        Cursor cursor = getContentResolver().query(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
-//                null,
-//                MediaStore.Audio.Media.IS_MUSIC + "!= 0",
-//                null,
-//                null);
-//
-//        lv.setAdapter(new SimpleCursorAdapter(this,
-//                android.R.layout.simple_list_item_1,
-//                cursor,
-//                new String[] { MediaStore.Audio.Media.DATA},
-//                new int[] { android.R.id.text1 }));
-//
-//        lv.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-//            public void onItemClick(AdapterView<?> myAdapter,
-//                                    View myView,
-//                                    int myItemInt,
-//                                    long mylng) {
-//                Cursor c = (Cursor) lv.getItemAtPosition(myItemInt);
-//                String uri = c.getString(c.getColumnIndex(MediaStore.Audio.Media.DATA));
-//                selectSong(uri);
-//                lv.setVisibility(View.INVISIBLE);
-//
-//            }
-//        });
+        String path = "/sdcard/Music";
+        File[] songFiles = new File(path).listFiles(new FileFilter() {
+            //get only files with .mp3 extension
+            @Override
+            public boolean accept(File file) {
+                return file.getPath().endsWith(".mp3");
+            }
+        });
 
 
+
+        if(songFiles==null || songFiles.length < 1){
+            TextView display = findViewById(R.id.name_music);
+            display.setText(R.string.no_music_found);
+        }else{
+            lv.setAdapter(new ArrayAdapter<>(this,R.layout.listview_layout,songFiles));
+            Log.d(TAG,"Song List loaded");
+        }
+
+        lv.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            public void onItemClick(AdapterView<?> myAdapter, View myView, int myItemInt, long mylng) {
+                File f = (File) lv.getItemAtPosition(myItemInt);
+                selectSong(f.getAbsolutePath());
+                lv.setVisibility(View.INVISIBLE);
+            }
+        });
 
     }
 
-    public String getSongTitle(String filePath)
-    {
+    public String getSongTitle(String filePath) {
         int indexOfLastSlash = filePath.lastIndexOf("/");
         int indexOfExtension = filePath.lastIndexOf(".");
 
