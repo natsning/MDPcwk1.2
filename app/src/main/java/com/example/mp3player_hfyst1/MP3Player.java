@@ -96,4 +96,8 @@ public class MP3Player {
             mediaPlayer = null;
         }
     }
+
+    public boolean isSongPlaying(){
+        return state==MP3PlayerState.PLAYING;
+    }
 }

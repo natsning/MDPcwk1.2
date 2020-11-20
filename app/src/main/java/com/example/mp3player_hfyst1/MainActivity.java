@@ -59,14 +59,22 @@ public class MainActivity extends AppCompatActivity {
 
     private void onPlayClicked(){
         state = MainState.SHOW_PAUSE;
-        controlButton.setImageResource(R.drawable.icon_pause);
-//        mp3.play();
+        updateUI();
+        mp3.play();
     }
 
     private void onPauseClicked(){
         state = MainState.SHOW_PLAY;
-        controlButton.setImageResource(R.drawable.icon_play);
-//        mp3.pause();
+        updateUI();
+        mp3.pause();
+    }
+
+    private void updateUI(){
+        if (state == MainState.SHOW_PLAY){
+            controlButton.setImageResource(R.drawable.icon_play);
+        }else if(state == MainState.SHOW_PAUSE){
+            controlButton.setImageResource(R.drawable.icon_pause);
+        }
     }
 
     public void onSearchClicked(View v){
@@ -82,11 +90,10 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-
-
         if(songFiles==null || songFiles.length < 1){
             TextView display = findViewById(R.id.name_music);
             display.setText(R.string.no_music_found);
+            return ;
         }else{
             lv.setAdapter(new ArrayAdapter<>(this,R.layout.listview_layout,songFiles));
             Log.d(TAG,"Song List loaded");
@@ -110,11 +117,13 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void selectSong(String uri){
-        Log.d(TAG,String.format("%s----------------------------",uri));
         TextView tv = findViewById(R.id.name_music);
         tv.setText(getSongTitle(uri));
         mp3.load(uri);
-
+        if(mp3.isSongPlaying()){
+            state = MainState.SHOW_PAUSE;
+            updateUI();
+        }
     }
 
     @Override
