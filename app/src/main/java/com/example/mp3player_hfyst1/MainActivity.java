@@ -2,19 +2,24 @@ package com.example.mp3player_hfyst1;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
+import androidx.core.widget.NestedScrollView;
 
 import android.Manifest;
 import android.app.ActivityManager;
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
+import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
-import android.provider.MediaStore;
+import android.os.IBinder;
 import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ImageButton;
 import android.widget.ListView;
-import android.widget.SimpleCursorAdapter;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -23,9 +28,11 @@ import java.io.FileFilter;
 
 public class MainActivity extends AppCompatActivity {
 
-    private MP3Player mp3;
     private MainState state = MainState.SHOW_PLAY;
-    private ImageButton controlButton;
+    private MP3Service.MP3Binder binder = null;
+    private ProgressBar progressBar;
+    private TextView durationTimer;
+    private boolean isBound = false;
     private final String TAG = "MainActivity";
     private final int REQUEST_PERMISSION_READ_EXTERNAL_STORAGE = 1;
 
@@ -43,10 +50,30 @@ public class MainActivity extends AppCompatActivity {
             ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.READ_EXTERNAL_STORAGE},
                     REQUEST_PERMISSION_READ_EXTERNAL_STORAGE);
         }
-        controlButton = findViewById(R.id.buttonControl);
 
-        mp3 = new MP3Player();
+        durationTimer = findViewById(R.id.durationTimer);
+        progressBar = findViewById(R.id.progressBar);
+
+        Intent intent = new Intent(this, MP3Service.class);
+        startService(intent);
+        bindService(intent,connection, Context.BIND_AUTO_CREATE);
+
     }
+
+    private ServiceConnection connection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder iBinder) {
+            Log.d(TAG,"Service connected to main");
+            binder =(MP3Service.MP3Binder)iBinder;
+            isBound = true;
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            binder = null;
+            isBound = false;
+        }
+    };
 
     public void onControlClicked(View v){
         if(state==MainState.SHOW_PLAY){
@@ -54,22 +81,24 @@ public class MainActivity extends AppCompatActivity {
         }else{
             onPauseClicked();
         }
-
     }
 
     private void onPlayClicked(){
         state = MainState.SHOW_PAUSE;
         updateUI();
-        mp3.play();
+        binder.play();
+        progressBar.post(progressBarRunner);
     }
 
     private void onPauseClicked(){
         state = MainState.SHOW_PLAY;
         updateUI();
-        mp3.pause();
+        binder.pause();
     }
 
-    private void updateUI(){
+    private void updateUI( ){
+        ImageButton controlButton = findViewById(R.id.buttonControl);
+
         if (state == MainState.SHOW_PLAY){
             controlButton.setImageResource(R.drawable.icon_play);
         }else if(state == MainState.SHOW_PAUSE){
@@ -81,6 +110,7 @@ public class MainActivity extends AppCompatActivity {
         final ListView lv = findViewById(R.id.listSong);
         lv.setVisibility(View.VISIBLE);
 
+        //Look for files
         String path = "/sdcard/Music";
         File[] songFiles = new File(path).listFiles(new FileFilter() {
             //get only files with .mp3 extension
@@ -90,25 +120,38 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        // Display files if there are files
         if(songFiles==null || songFiles.length < 1){
-            TextView display = findViewById(R.id.name_music);
-            display.setText(R.string.no_music_found);
+            TextView tv = findViewById(R.id.name_music);
+            tv.setText(R.string.no_music_found);
             return ;
         }else{
             lv.setAdapter(new ArrayAdapter<>(this,R.layout.listview_layout,songFiles));
             Log.d(TAG,"Song List loaded");
         }
 
+        // if file clicked
         lv.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             public void onItemClick(AdapterView<?> myAdapter, View myView, int myItemInt, long mylng) {
                 File f = (File) lv.getItemAtPosition(myItemInt);
                 selectSong(f.getAbsolutePath());
                 lv.setVisibility(View.INVISIBLE);
+                progressBar.setMax(binder.getSongLength());
             }
         });
 
     }
 
+    private Runnable progressBarRunner = new Runnable() {
+        @Override
+        public void run() {
+            if(binder.isSongPlaying()){
+                progressBar.setProgress(binder.getCurrentDuration());
+                progressBar.post(progressBarRunner);
+                durationTimer.setText(convertMilliSectoMinSec(binder.getCurrentDuration()));
+            }
+        }
+    };
     public String getSongTitle(String filePath) {
         int indexOfLastSlash = filePath.lastIndexOf("/");
         int indexOfExtension = filePath.lastIndexOf(".");
@@ -117,13 +160,40 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void selectSong(String uri){
+
         TextView tv = findViewById(R.id.name_music);
         tv.setText(getSongTitle(uri));
-        mp3.load(uri);
-        if(mp3.isSongPlaying()){
+
+        binder.load(uri);
+        if(binder.isSongPlaying()){
             state = MainState.SHOW_PAUSE;
             updateUI();
         }
+
+        progressBar.post(progressBarRunner);
+
+        //scrolls back to top after song is selected
+        NestedScrollView n = findViewById(R.id.nestedScrollView);
+        n.smoothScrollTo(0,0);
+    }
+
+    /**
+     * Convert time into a readable format
+     * @param milliseconds duration returned from MP3Player.getProgress
+     * @return String in MM:SS to be displayed
+     */
+    private String convertMilliSectoMinSec(int milliseconds) {
+        String str = "";
+        String secStr;
+
+        int min = (milliseconds % (1000 * 60)) / (1000 * 60);
+        int sec = ((milliseconds % (1000 * 60 )) % (1000 * 60) / 1000);
+
+        secStr = String.format("%02d", sec); // show 2 numbers for single digits
+
+        str = str + min + ":" + secStr;
+
+        return str;
     }
 
     @Override
