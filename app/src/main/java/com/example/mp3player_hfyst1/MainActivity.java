@@ -12,6 +12,7 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.IBinder;
 import android.util.Log;
 import android.view.View;
@@ -25,6 +26,7 @@ import android.widget.Toast;
 
 import java.io.File;
 import java.io.FileFilter;
+import java.util.Objects;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -33,6 +35,7 @@ public class MainActivity extends AppCompatActivity {
     private ProgressBar progressBar;
     private TextView durationTimer;
     private boolean isBound = false;
+    private String songTitle = "No Song Playing..";
     private final String TAG = "MainActivity";
     private final int REQUEST_PERMISSION_READ_EXTERNAL_STORAGE = 1;
 
@@ -51,8 +54,19 @@ public class MainActivity extends AppCompatActivity {
                     REQUEST_PERMISSION_READ_EXTERNAL_STORAGE);
         }
 
+
         durationTimer = findViewById(R.id.durationTimer);
         progressBar = findViewById(R.id.progressBar);
+
+        if(savedInstanceState!=null){
+            TextView tv = findViewById(R.id.name_music);
+            tv.setText(savedInstanceState.getString("songTitle"));
+            songTitle = savedInstanceState.getString("songTitle");
+            if(Objects.equals(savedInstanceState.getString("state"), MainState.SHOW_PAUSE.toString())){
+                state = MainState.SHOW_PAUSE;
+                updateUI();
+            }
+        }
 
         Intent intent = new Intent(this, MP3Service.class);
         startService(intent);
@@ -66,6 +80,12 @@ public class MainActivity extends AppCompatActivity {
             Log.d(TAG,"Service connected to main");
             binder =(MP3Service.MP3Binder)iBinder;
             isBound = true;
+
+            //saved instance
+            if(binder.isSongPlaying()||binder.isSongPaused()){
+                progressBar.setMax(binder.getSongLength());
+                progressBar.post(progressBarRunner);
+            }
         }
 
         @Override
@@ -94,6 +114,7 @@ public class MainActivity extends AppCompatActivity {
         state = MainState.SHOW_PLAY;
         updateUI();
         binder.pause();
+
     }
 
     private void updateUI( ){
@@ -111,7 +132,7 @@ public class MainActivity extends AppCompatActivity {
         lv.setVisibility(View.VISIBLE);
 
         //Look for files
-        String path = "/sdcard/Music";
+        String path = Environment.getExternalStorageDirectory().getPath() + "/Music/";
         File[] songFiles = new File(path).listFiles(new FileFilter() {
             //get only files with .mp3 extension
             @Override
@@ -145,13 +166,18 @@ public class MainActivity extends AppCompatActivity {
     private Runnable progressBarRunner = new Runnable() {
         @Override
         public void run() {
-            if(binder.isSongPlaying()){
+            if(binder.isSongPlaying()||binder.isSongPaused()){
                 progressBar.setProgress(binder.getCurrentDuration());
-                progressBar.post(progressBarRunner);
                 durationTimer.setText(convertMilliSectoMinSec(binder.getCurrentDuration()));
+                if(binder.isSongPlaying()) {
+                    progressBar.post(progressBarRunner);
+                }
             }
+
+
         }
     };
+
     public String getSongTitle(String filePath) {
         int indexOfLastSlash = filePath.lastIndexOf("/");
         int indexOfExtension = filePath.lastIndexOf(".");
@@ -162,7 +188,8 @@ public class MainActivity extends AppCompatActivity {
     private void selectSong(String uri){
 
         TextView tv = findViewById(R.id.name_music);
-        tv.setText(getSongTitle(uri));
+        songTitle = getSongTitle(uri);
+        tv.setText(songTitle);
 
         binder.load(uri);
         if(binder.isSongPlaying()){
@@ -194,6 +221,14 @@ public class MainActivity extends AppCompatActivity {
         str = str + min + ":" + secStr;
 
         return str;
+    }
+
+    @Override
+    public void onSaveInstanceState(Bundle savedInstanceState) {
+        savedInstanceState.putString("songTitle",songTitle);
+        savedInstanceState.putString("state",state.toString());
+        super.onSaveInstanceState(savedInstanceState);
+
     }
 
     @Override

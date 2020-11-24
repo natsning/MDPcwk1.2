@@ -44,6 +44,9 @@ public class MP3Service extends Service {
                 return (mp3.getState() == MP3Player.MP3PlayerState.PLAYING);
         }
 
+        public boolean isSongPaused(){
+            return mp3.getState()== MP3Player.MP3PlayerState.PAUSED;
+        }
         public int getCurrentDuration(){
             return mp3.getProgress();
         }
@@ -51,6 +54,7 @@ public class MP3Service extends Service {
         public int getSongLength(){
             return  mp3.getDuration();
         }
+
     }
 
     @Override
@@ -66,7 +70,16 @@ public class MP3Service extends Service {
         return binder;
     }
 
+    public boolean onUnbind(Intent intent){
+        Log.d(TAG,"Service Unbinded");
+        super.onUnbind(intent);
+        return true;
+    }
 
+    public void onRebind(Intent intent){
+        Log.d(TAG,"Service Rebinded");
+        super.onUnbind(intent);
+    }
 
 
 }
