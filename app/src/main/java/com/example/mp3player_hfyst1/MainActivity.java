@@ -131,6 +131,7 @@ public class MainActivity extends AppCompatActivity {
         state = MainState.SHOW_PLAY;
         updateUI();
         binder.pause();
+        progressBar.removeCallbacks(progressBarRunner);
 
     }
 
@@ -249,8 +250,8 @@ public class MainActivity extends AppCompatActivity {
      */
     private String convertMilliSectoMinSec(int milliseconds) {
 
-        int minute = (milliseconds % (1000 * 60)) / (1000 * 60);
-        int second = ((milliseconds % (1000 * 60 )) % (1000 * 60) / 1000);
+        int minute = (milliseconds / 1000) / 60;
+        int second = (milliseconds / 1000) % 60;
 
         return minute + ":" + String.format("%02d", second);
     }
