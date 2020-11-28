@@ -49,6 +49,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        // permission checker
         if(ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)!= PackageManager.PERMISSION_GRANTED){
             ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.READ_EXTERNAL_STORAGE},
                     REQUEST_PERMISSION_READ_EXTERNAL_STORAGE);
@@ -58,6 +59,7 @@ public class MainActivity extends AppCompatActivity {
         durationTimer = findViewById(R.id.durationTimer);
         progressBar = findViewById(R.id.progressBar);
 
+        // restore previous state
         if(savedInstanceState!=null){
             TextView tv = findViewById(R.id.name_music);
             tv.setText(savedInstanceState.getString("songTitle"));
@@ -68,12 +70,17 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
+        // binds the service to this activity and runs it indefinitely
         Intent intent = new Intent(this, MP3Service.class);
         startService(intent);
         bindService(intent,connection, Context.BIND_AUTO_CREATE);
 
     }
 
+    /**
+     * Creates a service connection to MP3Service and access it through the its binder
+     * @see MP3Service
+     */
     private ServiceConnection connection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder iBinder) {
@@ -81,7 +88,7 @@ public class MainActivity extends AppCompatActivity {
             binder =(MP3Service.MP3Binder)iBinder;
             isBound = true;
 
-            //saved instance
+            // restore previously saved instance
             if(binder.isSongPlaying()||binder.isSongPaused()){
                 progressBar.setMax(binder.getSongLength());
                 progressBar.post(progressBarRunner);
@@ -95,6 +102,10 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
+    /**
+     * onClick method for the play/pause button
+     * @param v play/pause button
+     */
     public void onControlClicked(View v){
         if(state==MainState.SHOW_PLAY){
             onPlayClicked();
@@ -103,6 +114,9 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * if play button is clicked
+     */
     private void onPlayClicked(){
         state = MainState.SHOW_PAUSE;
         updateUI();
@@ -110,6 +124,9 @@ public class MainActivity extends AppCompatActivity {
         progressBar.post(progressBarRunner);
     }
 
+    /**
+     * if pause button is clicked
+     */
     private void onPauseClicked(){
         state = MainState.SHOW_PLAY;
         updateUI();
@@ -117,6 +134,9 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+    /**
+     * Updates the image shown for play/pause button
+     */
     private void updateUI( ){
         ImageButton controlButton = findViewById(R.id.buttonControl);
 
@@ -127,6 +147,12 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * onClick method for search button
+     * Searches and lists out the device's sdcard folder for .mp3 files in a listView
+     * Handles onClick files to load the song
+     * @param v search button
+     */
     public void onSearchClicked(View v){
         final ListView lv = findViewById(R.id.listSong);
         lv.setVisibility(View.VISIBLE);
@@ -155,14 +181,19 @@ public class MainActivity extends AppCompatActivity {
         lv.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             public void onItemClick(AdapterView<?> myAdapter, View myView, int myItemInt, long mylng) {
                 File f = (File) lv.getItemAtPosition(myItemInt);
-                selectSong(f.getAbsolutePath());
-                lv.setVisibility(View.INVISIBLE);
-                progressBar.setMax(binder.getSongLength());
+                if(isBound){
+                    selectSong(f.getAbsolutePath());
+                    lv.setVisibility(View.INVISIBLE);
+                    progressBar.setMax(binder.getSongLength());
+                }
             }
         });
 
     }
 
+    /**
+     * A thread to handle the updating for progressBar and timer.
+     */
     private Runnable progressBarRunner = new Runnable() {
         @Override
         public void run() {
@@ -173,11 +204,14 @@ public class MainActivity extends AppCompatActivity {
                     progressBar.post(progressBarRunner);
                 }
             }
-
-
         }
     };
 
+    /**
+     * Clean the string to leave only the title of the song
+     * @param filePath song file path
+     * @return cleaned string
+     */
     public String getSongTitle(String filePath) {
         int indexOfLastSlash = filePath.lastIndexOf("/");
         int indexOfExtension = filePath.lastIndexOf(".");
@@ -185,6 +219,10 @@ public class MainActivity extends AppCompatActivity {
         return filePath.substring(indexOfLastSlash+1,indexOfExtension);
     }
 
+    /**
+     * Handles the UI, communication to service after a song is selected
+     * @param uri song file path
+     */
     private void selectSong(String uri){
 
         TextView tv = findViewById(R.id.name_music);
@@ -210,17 +248,11 @@ public class MainActivity extends AppCompatActivity {
      * @return String in MM:SS to be displayed
      */
     private String convertMilliSectoMinSec(int milliseconds) {
-        String str = "";
-        String secStr;
 
-        int min = (milliseconds % (1000 * 60)) / (1000 * 60);
-        int sec = ((milliseconds % (1000 * 60 )) % (1000 * 60) / 1000);
+        int minute = (milliseconds % (1000 * 60)) / (1000 * 60);
+        int second = ((milliseconds % (1000 * 60 )) % (1000 * 60) / 1000);
 
-        secStr = String.format("%02d", sec); // show 2 numbers for single digits
-
-        str = str + min + ":" + secStr;
-
-        return str;
+        return minute + ":" + String.format("%02d", second);
     }
 
     @Override
@@ -241,5 +273,12 @@ public class MainActivity extends AppCompatActivity {
             Toast.makeText(this,"Permission is needed.",Toast.LENGTH_LONG).show();
             ((ActivityManager)(this.getSystemService(ACTIVITY_SERVICE))).clearApplicationUserData();
         }
+    }
+
+    @Override
+    public void onDestroy() {
+        unbindService(connection);
+        isBound = false;
+        super.onDestroy();
     }
 }
