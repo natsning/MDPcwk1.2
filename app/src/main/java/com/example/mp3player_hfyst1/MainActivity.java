@@ -46,7 +46,6 @@ public class MainActivity extends AppCompatActivity {
     private NotificationManager notificationManager;
     private final String CHANNEL_ID = "C10001";
 
-
     private enum MainState {
         SHOW_PLAY,
         SHOW_PAUSE
@@ -109,6 +108,7 @@ public class MainActivity extends AppCompatActivity {
         public void onServiceDisconnected(ComponentName name) {
             binder = null;
             isBound = false;
+            notificationManager.cancel(0);
         }
     };
 
@@ -209,10 +209,19 @@ public class MainActivity extends AppCompatActivity {
     private Runnable progressBarRunner = new Runnable() {
         @Override
         public void run() {
+            // isSongPaused is needed to handle the activity restoration of paused song
             if(binder.isSongPlaying()||binder.isSongPaused()){
                 progressBar.setProgress(binder.getCurrentDuration());
                 durationTimer.setText(convertMilliSectoMinSec(binder.getCurrentDuration()));
-                if(binder.isSongPlaying()) {
+
+                // handles song completion
+                if(progressBar.getProgress()==progressBar.getMax()){
+                    notificationManager.cancel(0);
+                    state = MainState.SHOW_PLAY;
+                    updateUI();
+                    progressBar.removeCallbacks(progressBarRunner);
+
+                }else if(binder.isSongPlaying()){
                     progressBar.post(progressBarRunner);
                 }
             }

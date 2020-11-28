@@ -1,7 +1,5 @@
 package com.example.mp3player_hfyst1;
 
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Intent;
 import android.os.Binder;
@@ -31,7 +29,6 @@ public class MP3Service extends Service {
 
         public void play(){
             mp3.play();
-
         }
 
         public void pause(){
