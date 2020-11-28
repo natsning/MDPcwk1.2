@@ -2,10 +2,15 @@ package com.example.mp3player_hfyst1;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
+import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
 import androidx.core.widget.NestedScrollView;
 
 import android.Manifest;
 import android.app.ActivityManager;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -38,6 +43,9 @@ public class MainActivity extends AppCompatActivity {
     private String songTitle = "No Song Playing..";
     private final String TAG = "MainActivity";
     private final int REQUEST_PERMISSION_READ_EXTERNAL_STORAGE = 1;
+    private NotificationManager notificationManager;
+    private final String CHANNEL_ID = "C10001";
+
 
     private enum MainState {
         SHOW_PLAY,
@@ -58,6 +66,8 @@ public class MainActivity extends AppCompatActivity {
 
         durationTimer = findViewById(R.id.durationTimer);
         progressBar = findViewById(R.id.progressBar);
+        notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        createNotificationChannel();
 
         // restore previous state
         if(savedInstanceState!=null){
@@ -106,7 +116,7 @@ public class MainActivity extends AppCompatActivity {
      * onClick method for the play/pause button
      * @param v play/pause button
      */
-    public void onControlClicked(View v){
+    public void onPlayPauseClicked(View v){
         if(state==MainState.SHOW_PLAY){
             onPlayClicked();
         }else{
@@ -122,6 +132,7 @@ public class MainActivity extends AppCompatActivity {
         updateUI();
         binder.play();
         progressBar.post(progressBarRunner);
+        showNotification();
     }
 
     /**
@@ -132,14 +143,14 @@ public class MainActivity extends AppCompatActivity {
         updateUI();
         binder.pause();
         progressBar.removeCallbacks(progressBarRunner);
-
+        notificationManager.cancel(0);
     }
 
     /**
      * Updates the image shown for play/pause button
      */
     private void updateUI( ){
-        ImageButton controlButton = findViewById(R.id.buttonControl);
+        ImageButton controlButton = findViewById(R.id.buttonPlayPause);
 
         if (state == MainState.SHOW_PLAY){
             controlButton.setImageResource(R.drawable.icon_play);
@@ -237,7 +248,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         progressBar.post(progressBarRunner);
-
+        showNotification();
         //scrolls back to top after song is selected
         NestedScrollView n = findViewById(R.id.nestedScrollView);
         n.smoothScrollTo(0,0);
@@ -254,6 +265,39 @@ public class MainActivity extends AppCompatActivity {
         int second = (milliseconds / 1000) % 60;
 
         return minute + ":" + String.format("%02d", second);
+    }
+
+    /**
+     * Creates notification channel for notification be to grouped in.
+     * Android 8.0 and above requires a notification channel to be made.
+     */
+    private void createNotificationChannel() {
+
+        NotificationChannel channel
+                = new NotificationChannel(CHANNEL_ID, "CHANNEL_NAME", NotificationManager.IMPORTANCE_DEFAULT);
+        notificationManager = getSystemService(NotificationManager.class);
+        notificationManager.createNotificationChannel(channel);
+    }
+
+    /**
+     * Builds and shows notification
+     */
+    private void showNotification(){
+        // tapping notification opens this activity
+        Intent intent = getIntent();
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+
+        // building notification
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_baseline_library_music_24)
+                .setContentTitle(getString(R.string.app_name))
+                .setContentText("Song is playing...")
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setContentIntent(pendingIntent);
+
+        // showing the notification
+        NotificationManagerCompat notificationManager = NotificationManagerCompat.from(this);
+        notificationManager.notify(0, builder.build());
     }
 
     @Override

@@ -1,5 +1,7 @@
 package com.example.mp3player_hfyst1;
 
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Intent;
 import android.os.Binder;
@@ -29,6 +31,7 @@ public class MP3Service extends Service {
 
         public void play(){
             mp3.play();
+
         }
 
         public void pause(){
@@ -47,6 +50,7 @@ public class MP3Service extends Service {
         public boolean isSongPaused(){
             return mp3.getState()== MP3Player.MP3PlayerState.PAUSED;
         }
+
         public int getCurrentDuration(){
             return mp3.getProgress();
         }

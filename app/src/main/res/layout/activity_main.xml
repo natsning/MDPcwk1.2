@@ -87,13 +87,13 @@
             </LinearLayout>
 
             <ImageButton
-                android:id="@+id/buttonControl"
+                android:id="@+id/buttonPlayPause"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:backgroundTint="@color/colorPrimary"
                 android:contentDescription="@string/cd_play"
                 android:gravity="center"
-                android:onClick="onControlClicked"
+                android:onClick="onPlayPauseClicked"
                 app:srcCompat="@drawable/icon_play" />
 
             <ListView
